@@ -1,0 +1,328 @@
+server:
+  contextPath: /api
+
+---
+hibernate:
+    dialect: org.hibernate.dialect.PostgreSQL9Dialect
+    cache:
+        queries: false
+        use_second_level_cache: true
+        use_query_cache: false
+        region.factory_class: 'org.hibernate.cache.ehcache.EhCacheRegionFactory'
+    default_schema: public
+
+dataSource:
+    pooled: true
+    jmxExport: true
+    driverClassName: org.postgresql.Driver
+    username:
+    password:
+
+environments:
+    development:
+        dataSource:
+            logSql: true
+            dbCreate: none
+            url: jdbc:postgresql://localhost/huxley-dev
+        rabbitmq:
+          enabled: false
+
+    test:
+        rabbitmq:
+          enabled: false
+        dataSource:
+            logSql: false
+            dbCreate: none
+            url: jdbc:postgresql://localhost/huxley-test
+            properties:
+                jmxEnabled: true
+                initialSize: 5
+                maxActive: 80
+                minIdle: 5
+                maxIdle: 25
+                maxWait: 10000
+                maxAge: 600000
+                timeBetweenEvictionRunsMillis: 5000
+                minEvictableIdleTimeMillis: 60000
+                validationQuery: SELECT 1
+                validationQueryTimeout: 3
+                validationInterval: 15000
+                testOnBorrow: true
+                testWhileIdle: true
+                testOnReturn: false
+                jdbcInterceptors: ConnectionState
+                defaultTransactionIsolation: 2
+
+    production:
+        rabbitmq:
+          enabled: false
+        dataSource:
+            logSql: false
+            dbCreate: none
+            url: jdbc:postgresql://localhost/huxley-prod
+            properties:
+                jmxEnabled: true
+                initialSize: 5
+                maxActive: 80
+                minIdle: 5
+                maxIdle: 25
+                maxWait: 10000
+                maxAge: 600000
+                timeBetweenEvictionRunsMillis: 5000
+                minEvictableIdleTimeMillis: 60000
+                validationQuery: SELECT 1
+                validationQueryTimeout: 3
+                validationInterval: 15000
+                testOnBorrow: true
+                testWhileIdle: true
+                testOnReturn: false
+                jdbcInterceptors: ConnectionState
+                defaultTransactionIsolation: 2 # TRANSACTION_READ_COMMITTED
+
+---
+---
+grails:
+    cors:
+        enabled: true        
+    profile: rest-api
+    codegen:
+        defaultPackage: com.thehuxley
+    spring:
+        transactionManagement: false
+    plugin:
+        databasemigration:
+            updateOnStart: true
+        springsecurity:
+            rest.login.endpointUrl: /login
+            rest.logout.endpointUrl: /logout
+            rest.token.storage.jwt.secret: ''
+            rest.token.storage.jwt.expiration: 604800 #7 dias
+            password.algorithm: "SHA-512"
+            password.hash.iterations: 1
+            userLookup.userDomainClassName: 'com.thehuxley.User'
+#            userLookup.authorityJoinClassName: 'com.thehuxley.UserRole'
+            authority.className: 'com.thehuxley.Role'
+            securityConfigType: 'Annotation'
+#            controllerAnnotations.staticRules:
+#                - pattern: '/**'
+#                  access: ['permitAll']
+            filterChain.chainMap:
+                - pattern: '/**'
+                  filters: 'JOINED_FILTERS,-exceptionTranslationFilter,-authenticationProcessingFilter,-securityContextPersistenceFilter'
+
+info:
+    app:
+        name: '@info.app.name@'
+        version: '@info.app.version@'
+        grailsVersion: '@info.app.grailsVersion@'
+spring:
+    groovy:
+        template:
+            check-template-location: false
+
+rabbitmq:
+    connections:
+      - name: connection
+        host: localhost
+        port: 5672
+        username: guest
+        password: guest
+        automaticReconnect: true
+        isDefault: true
+
+      - name: plagiarism
+        host: diogocabral.com.br
+        port: 5672
+        username:
+        password:
+        automaticReconnect: true
+        isDefault: false
+
+    exchanges:
+      - name: plagiarism_exchange
+        type: topic
+        durable: true
+        connection: plagiarism
+
+    queues:
+      - name: submission_queue
+        durable: true
+        arguments:
+            x-max-priority: 10
+
+      - name: evaluation_queue
+        durable: true
+        arguments:
+            x-max-priority: 10
+
+      - name: reevaluation_queue
+        durable: true
+
+      - name: oracle_queue
+        durable: true
+
+      - name: oracle_result_queue
+        durable: true
+
+      - name: code_queue
+        durable: true
+
+      - name: code_result_queue
+        durable: true
+
+---
+grails:
+    mime:
+        disable:
+            accept:
+                header:
+                    userAgents:
+                        - Gecko
+                        - WebKit
+                        - Presto
+                        - Trident
+        types:
+            all: '*/*'
+            atom: application/atom+xml
+            css: text/css
+            csv: text/csv
+            form: application/x-www-form-urlencoded
+            html:
+              - text/html
+              - application/xhtml+xml
+            js: text/javascript
+            json:
+              - application/json
+              - text/json
+            multipartForm: multipart/form-data
+            rss: application/rss+xml
+            text: text/plain
+            hal:
+              - application/hal+json
+              - application/hal+xml
+            xml:
+              - text/xml
+              - application/xml
+    urlmapping:
+        cache:
+            maxsize: 1000
+    controllers:
+        defaultScope: singleton
+        upload:
+            maxRequestSize: 1048576
+            maxFileSize: 8048576
+    converters:
+        encoding: UTF-8
+    mail:
+        host: smtp-relay.sendinblue.com
+        username:
+        from: support@thehuxley.com
+        password:
+        port: 587
+        props: 
+             from: support@thehuxley.com
+
+environments:
+    development:
+        grails:
+            mail:
+                disabled: true
+        rabbitmq:
+            queues:
+              - name: huxley-dev
+                durable: true
+                connection: plagiarism
+
+        plagiarism:
+            uri: http://diogocabral.com.br/plagiarism
+            username: huxley-dev
+            password: 123456
+        th:
+            security:
+                oauth:
+                    user-info-uri: "http://localhost:8081/auth/me"
+        huxley:
+            baseURL: "http://localhost:8080"
+            avatarURL: "http://localhost:8000"
+            baseFileSystem: /tmp
+        huxleyFileSystem:
+            base: /tmp
+            profile:
+                images:
+                    dir: /tmp/images/app/profile
+            institution:
+                images:
+                    dir: /tmp/images/app/institution
+            problem:
+                images:
+                    dir: /tmp/images/app/problems
+                testCases:
+                    dir: /tmp/huxley/testcases/
+
+    test:
+        grails:
+            mail:
+                disabled: true
+        rabbitmq:
+            queues:
+              - name: huxley-test
+                durable: true
+                connection: plagiarism
+
+        plagiarism:
+            uri: http://diogocabral.com.br/plagiarism
+            username: huxley-test
+            password: 123456
+        th:
+            security:
+                oauth:
+                    user-info-uri: "http://localhost:8081/auth/me"
+        huxley:
+            baseURL: "http://dev.thehuxley.com"
+            avatarURL: "http://dev.thehuxley.com/avatar"
+            baseFileSystem: /home/huxley/data
+        huxleyFileSystem:
+            base: /home/huxley/data/submissions
+            profile:
+                images:
+                    dir: /home/huxley/data/images/app/profile
+            institution:
+                images:
+                    dir: /home/huxley/data/images/app/institution
+            problem:
+                images:
+                    dir: /home/huxley/data/images/app/problems
+                testCases:
+                    dir: /home/huxley/data/testcases
+    production:
+        rabbitmq:
+            queues:
+              - name: huxley-prod
+                durable: true
+                connection: plagiarism
+
+        plagiarism:
+            uri: http://diogocabral.com.br/plagiarism
+            username:
+            password:
+        th:
+            security:
+                oauth:
+                    user-info-uri: "https://www.thehuxley.com/auth/me"
+        huxley:
+            baseURL: "https://www.thehuxley.com"
+            avatarURL: "https://www.thehuxley.com/avatar"
+            baseFileSystem: /home/huxley/data
+        huxleyFileSystem:
+            base: /home/huxley/data/submissions
+            profile:
+                images:
+                    dir: /home/huxley/data/images/app/profile
+            institution:
+                images:
+                    dir: /home/huxley/data/images/app/institution
+            problem:
+                images:
+                    dir: /home/huxley/data/images/app/problems
+                testCases:
+                    dir: /home/huxley/data/testcases
