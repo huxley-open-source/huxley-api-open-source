@@ -156,7 +156,8 @@ class QuestionnaireService {
                     max(case when qup.penalty is null and s.evaluation is not null and s.total_test_cases > 0 then (s.correct_test_cases / s.total_test_cases\\:\\:real) * qp.score else 0 end) as partial_score,
                     min(case when sre is not null  and s.evaluation = 0 then sre.wrong_restriction_count else null end) as restriction_error_count,
                     max(qpr.penalty) as restriction_penalty,
-                    sum(case when s.submission_date < q.end_date then 1 else 0 end) as submission_count
+                    sum(case when s.submission_date <= q.end_date then 1 else 0 end) as submission_count,
+		    max(s.submission_date) as latest_submission
                 from user_group ug
                 inner join questionnaire q on (q.group_id = ug.group_id)
                 inner join questionnaire_problem qp on (qp.questionnaire_id = q.id)
@@ -175,7 +176,7 @@ class QuestionnaireService {
 
         scores.each {
             result.add([
-                    "questionnaireId": it[0],
+                    "questionnaireId"       : it[0],
                     "questionnaireProblemId": it[1],
                     "problemId"             : it[2],
                     "userId"                : it[3],
@@ -184,7 +185,8 @@ class QuestionnaireService {
                     "partialScore"          : it[6],
                     "restrictionErrorCount" : it[7],
                     "restrictionPenalty"    : it[8],
-                    "submissionCount"    : it[9]
+                    "submissionCount"       : it[9],
+		    "latestSubmission"      : it[10] 
             ])
         }
 
